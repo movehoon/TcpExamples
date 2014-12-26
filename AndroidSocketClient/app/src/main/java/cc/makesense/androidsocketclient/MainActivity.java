@@ -8,9 +8,11 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.lang.Thread;
 
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 
 public class MainActivity extends ActionBarActivity {
@@ -18,31 +20,56 @@ public class MainActivity extends ActionBarActivity {
     private Socket socket;
 
     private static final int SERVERPORT = 6000;
-    private static final String SERVER_IP = "192.168.0.36";
+    private static final String SERVER_IP = "192.168.0.24";
+
+    private Thread clientThread = null;
+    private Button btnConnect = null;
+    private Button btnSend = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        new Thread(new ClientThread()).start();
-    }
+        btnConnect = (Button) findViewById(R.id.btnConnect);
+        btnConnect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (clientThread == null) {
+                    clientThread = new Thread(new ClientThread());
+                    clientThread.start();
+                    btnConnect.setText("Disconnect");
+                } else {
+                    clientThread.interrupt();
+                    clientThread = null;
+                    btnConnect.setText("Connect");
+                }
+            }
+        });
+        btnConnect.setText("Connect");
 
-    public void onClick(View view) {
-        try {
-            EditText et = (EditText) findViewById(R.id.EditText01);
-            String str = et.getText().toString();
-            PrintWriter out = new PrintWriter(new BufferedWriter(
-                    new OutputStreamWriter(socket.getOutputStream())),
-                    true);
-            out.println(str);
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        btnSend = (Button) findViewById(R.id.btnSend);
+        btnSend.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (clientThread != null) {
+                    try {
+                        EditText et = (EditText) findViewById(R.id.EditText01);
+                        String str = et.getText().toString();
+                        PrintWriter out = new PrintWriter(new BufferedWriter(
+                                new OutputStreamWriter(socket.getOutputStream())),
+                                true);
+                        out.println(str);
+                    } catch (UnknownHostException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
     }
 
     class ClientThread implements Runnable {
