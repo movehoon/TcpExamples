@@ -1,18 +1,28 @@
 package cc.makesense.androidsocketserver;
 
+import java.util.Enumeration;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
-
+import android.net.wifi.WifiManager;
+import android.text.format.Formatter;
+import android.widget.Toast;
 
 public class MainActivity extends ActionBarActivity {
+
+    public static String TAG = "SERVER";
 
     private ServerSocket serverSocket;
 
@@ -30,19 +40,42 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        text = (TextView) findViewById(R.id.text2);
+        TextView textIpAddr = (TextView) findViewById(R.id.textIpAddr);
+        textIpAddr.setText(getLocalIpAddress());
+        text = (TextView) findViewById(R.id.textMessage);
 
         updateConversationHandler = new Handler();
 
         this.serverThread = new Thread(new ServerThread());
         this.serverThread.start();
 
+        ((Button) findViewById(R.id.btnClear)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                text.setText("");
+            }
+        });
+
+    }
+
+    public String getLocalIpAddress()
+    {
+        try {
+            WifiManager wm = (WifiManager) getSystemService(WIFI_SERVICE);
+            String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
+            return ip;
+        } catch (Exception ex) {
+            Log.e("IP Address", ex.toString());
+        }
+        return null;
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         try {
+            this.serverThread.interrupt();
+            this.serverThread = null;
             serverSocket.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -62,7 +95,9 @@ public class MainActivity extends ActionBarActivity {
 
                 try {
 
+                    Log.d (TAG, "Server listen...");
                     socket = serverSocket.accept();
+                    Log.d (TAG, "Server connected");
 
                     CommunicationThread commThread = new CommunicationThread(socket);
                     new Thread(commThread).start();
@@ -108,7 +143,6 @@ public class MainActivity extends ActionBarActivity {
                 }
             }
         }
-
     }
 
     class updateUIThread implements Runnable {
@@ -120,7 +154,13 @@ public class MainActivity extends ActionBarActivity {
 
         @Override
         public void run() {
-            text.setText(text.getText().toString()+"Client Says: "+ msg + "\n");
+            try {
+                Toast.makeText(getBaseContext(), this.msg, Toast.LENGTH_SHORT).show();
+                text.setText(text.getText().toString() + "Client Says: " + msg + "\n");
+            }
+            catch (Exception ex) {
+                Log.d (TAG, ex.toString());
+            }
         }
     }
 }
